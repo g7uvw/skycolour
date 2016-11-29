@@ -27,3 +27,11 @@
 *.exe
 *.out
 *.app
+
+# Mac trash
+.*
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
