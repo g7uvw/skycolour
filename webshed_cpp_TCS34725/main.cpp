@@ -14,42 +14,23 @@
 #include <cppconn/resultset.h>
 #include <cppconn/statement.h>
 
-
-// void delay_ms(unsigned int delay_ms)
-// {
-//   struct timespec tim, tim2;
-//   tim.tv_sec = 0;
-//   tim.tv_nsec = delay_ms * 1000000; //10 ms
-//   nanosleep(&tim , &tim2);
-// }
-
-// // Get current date/time, format is YYYY-MM-DD.HH:mm:ss
-// const std::string currentDateTime() {
-//     time_t     now = time(0);
-//     struct tm  tstruct;
-//     char       buf[80];
-//     tstruct = *localtime(&now);
-//     strftime(buf, sizeof(buf), "%Y-%m-%d.%X", &tstruct);
-//
-//     return buf;
-// }
+using namespace std;
 
 uint16_t red = 0,green = 0,blue = 0,clear = 0, lux = 0;
+uint32_t rgb = 0;
 
 std::string query = "INSERT INTO `minutedata`(`DateTime`, `Red`, `Green`, `Blue`, `Clear`, `Lux`) VALUES ('";
 
 
-
-
-using namespace std;
-
 int main()
 {
+  //start by setting gain and integration time to max
+  // read a set of values, if the values are too high [to be defined]
+  // then we reduce gain and try again.
 
     cout<<"Trying to init the chip"<<endl;
 
     if (!init(TCS34725_INTEGRATIONTIME_700MS,TCS34725_GAIN_60X))
-    //if (!init(TCS34725_INTEGRATIONTIME_2_4MS,TCS34725_GAIN_4X))
         cout<<"Failed to init the chip"<<endl;
     else
         cout<<"That seemed to go ok"<<endl;
@@ -58,14 +39,53 @@ int main()
 
     enable();
 
-
     delay_ms(700);
 
-
-    uint32_t rgb = 0;
+    // get initial values
     tie(red,green,blue,clear) = get_raw_data();
-
     lux = calculate_lux(red, green, blue);
+    cout << "Lux with gain 60X = " << lux << endl;
+    // check if it's too bright, if so reduce gain and try again
+
+while (lux > 500)
+{
+    switch (lux)
+    {
+      //want to be in range 0 to 500ish
+      case 0 ... 500:
+      break;
+      case 501 ... 2999:
+      {
+        cout << "Still too bright, reduced gain to 1X" << endl;
+        set_gain(TCS34725_GAIN_1X);
+        enable();
+        delay_ms(700);
+        tie(red,green,blue,clear) = get_raw_data();
+        lux = calculate_lux(red, green, blue);
+        cout << "Lux with gain 1X = " << lux << endl;
+        if (lux > 500)
+        {
+          cout << "Capping lux at 500" << endl;
+          lux = 500; //cap lux at 500, could change integration time to lower, but needs testing. This may do.
+        }
+      }
+      break;
+      case 3000 ... 65535:
+      {
+        cout << "First results were too bright. Gain now 4x" << endl;
+        set_gain(TCS34725_GAIN_4X);
+        enable();
+        delay_ms(700);
+        tie(red,green,blue,clear) = get_raw_data();
+        lux = calculate_lux(red, green, blue);
+        cout << "Lux with gain 4X = " << lux << endl;
+      }
+      break;
+    }
+}
+
+
+    // values should be ok here
 
     std::stringstream SQL_QUERY;
     SQL_QUERY << query;
@@ -78,7 +98,7 @@ int main()
 
     cout << SQL_QUERY.str() <<endl;
 
-    rgb = (red/32 * 65536) + (green/32 * 256) + blue/32;
+    rgb = (red * 65536) + (green * 256) + blue;
     cout<<"RGB Colour: " << std::hex << rgb << endl;
 
     try {
