@@ -54,7 +54,7 @@ while (lux > 500)
       //want to be in range 0 to 500ish
       case 0 ... 500:
       break;
-      case 501 ... 2999:
+      case 501 ... 5999:
       {
         cout << "Still too bright, reduced gain to 1X" << endl;
         set_gain(TCS34725_GAIN_1X);
@@ -67,10 +67,19 @@ while (lux > 500)
         {
           cout << "Capping lux at 500" << endl;
           lux = 500; //cap lux at 500, could change integration time to lower, but needs testing. This may do.
+
+          // this bit here should work, but doesn't
+          // set_gain(TCS34725_GAIN_1X);
+          // set_integration_time(TCS34725_INTEGRATIONTIME_50MS);
+          // enable();
+          // delay_ms(700);
+          // tie(red,green,blue,clear) = get_raw_data();
+          // lux = calculate_lux(red, green, blue);
+          // cout << "Lux with gain 1X and integration time 50ms = " << lux << endl;
         }
       }
       break;
-      case 3000 ... 65535:
+      case 6000 ... 65535:
       {
         cout << "First results were too bright. Gain now 4x" << endl;
         set_gain(TCS34725_GAIN_4X);
@@ -114,6 +123,7 @@ while (lux > 500)
     con->setSchema("skycolour");
     stmt = con->createStatement();
     res = stmt->executeQuery(SQL_QUERY.str());
+    if (res) cout << "Result of SQL is " << res << endl;
 }
 catch (sql::SQLException &e) {
   cout << "# ERR: SQLException in " << __FILE__;
